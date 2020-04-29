@@ -89,7 +89,7 @@
 	    curveMissColor: {type: 'color', default: '#ff0000'},
 	    curveShootingSpeed: {default: 5, min: 0, if: {type: ['parabolic']}},
 	    defaultPlaneSize: { default: 100 },
-	    landingNormal: {type: 'vec3', default: '0 1 0'},
+	    landingNormal: {type: 'vec3', default: { x: 0, y: 1, z: 0 }},
 	    landingMaxAngle: {default: '45', min: 0, max: 360},
 	    drawIncrementally: {default: false},
 	    incrementalDrawMs: {default: 700},
@@ -502,7 +502,7 @@
 	  var geometry;
 	  var material;
 
-	  geometry = new THREE.PlaneBufferGeometry(100, 100);
+	  geometry = new THREE.PlaneBufferGeometry(size, size);
 	  geometry.rotateX(-Math.PI / 2);
 	  material = new THREE.MeshBasicMaterial({color: 0xffff00});
 	  return new THREE.Mesh(geometry, material);
@@ -544,11 +544,11 @@
 	/* global THREE */
 	var RayCurve = function (numPoints, width) {
 	  this.geometry = new THREE.BufferGeometry();
-	  this.vertices = new Float32Array(numPoints * 3 * 2);
-	  this.uvs = new Float32Array(numPoints * 2 * 2);
+	  this.vertices = new Float32Array(3*2+(numPoints-1)*3*6);
+	  this.uvs = new Float32Array(2*2+(numPoints-1)*2*6);
 	  this.width = width;
 
-	  this.geometry.addAttribute('position', new THREE.BufferAttribute(this.vertices, 3).setDynamic(true));
+	  this.geometry.addAttribute('position', new THREE.BufferAttribute(this.vertices, 3).setUsage(THREE.DynamicDrawUsage));
 
 	  this.material = new THREE.MeshBasicMaterial({
 	    side: THREE.DoubleSide,
@@ -556,7 +556,6 @@
 	  });
 
 	  this.mesh = new THREE.Mesh(this.geometry, this.material);
-	  this.mesh.drawMode = THREE.TriangleStripDrawMode;
 
 	  this.mesh.frustumCulled = false;
 	  this.mesh.vertices = this.vertices;
@@ -587,14 +586,41 @@
 	      posA.copy(point).add(this.direction);
 	      posB.copy(point).sub(this.direction);
 
-	      var idx = 2 * 3 * i;
-	      this.vertices[idx++] = posA.x;
-	      this.vertices[idx++] = posA.y;
-	      this.vertices[idx++] = posA.z;
+	      if (i == 0) {
+	        this.vertices[i++] = posA.x;
+	        this.vertices[i++] = posA.y;
+	        this.vertices[i++] = posA.z;
 
-	      this.vertices[idx++] = posB.x;
-	      this.vertices[idx++] = posB.y;
-	      this.vertices[idx++] = posB.z;
+	        this.vertices[i++] = posB.x;
+	        this.vertices[i++] = posB.y;
+	        this.vertices[i++] = posB.z;
+	      } else {
+	        var idx = initialIdx = (2+6*(i-1))*3;
+
+	        this.vertices[idx++] = posA.x;
+	        this.vertices[idx++] = posA.y;
+	        this.vertices[idx++] = posA.z;
+
+	        this.vertices[idx++] = posA.x;
+	        this.vertices[idx++] = posA.y;
+	        this.vertices[idx++] = posA.z;
+
+	        this.vertices[idx++] = this.vertices[initialIdx-3];
+	        this.vertices[idx++] = this.vertices[initialIdx-2];
+	        this.vertices[idx++] = this.vertices[initialIdx-1];
+
+	        this.vertices[idx++] = posB.x;
+	        this.vertices[idx++] = posB.y;
+	        this.vertices[idx++] = posB.z;
+
+	        this.vertices[idx++] = posA.x;
+	        this.vertices[idx++] = posA.y;
+	        this.vertices[idx++] = posA.z;
+
+	        this.vertices[idx++] = posB.x;
+	        this.vertices[idx++] = posB.y;
+	        this.vertices[idx++] = posB.z;
+	      }
 
 	      this.geometry.attributes.position.needsUpdate = true;
 	    };
